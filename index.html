@@ -416,8 +416,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
 <script>
-const API_ORIGIN = 'https://api.anichin.bio/dramabox';
+const API_ORIGIN = 'https://api.anichin.bio/reelshort';
 const API_KEY = 'TRIAL-ANICHIN-2026';
+const API_LANG = 'en';
 // Direct works with Anichin's CORS headers; proxies stay as fallback.
 const PROXIES = [
   url => url,
@@ -432,7 +433,8 @@ async function apiFetch(path) {
   const key = path;
   if (cache[key]) return cache[key];
 
-  const target = API_ORIGIN + path;
+  const joiner = path.includes('?') ? '&' : '?';
+  const target = API_ORIGIN + path + `${joiner}lang=${encodeURIComponent(API_LANG)}`;
   let lastErr;
 
   // try from last known working proxy first, then others
@@ -597,7 +599,7 @@ function switchTab(tab) {
     loadedTabs[tab] = true;
     if (tab === 'home') loadGrid('/foryou', 'foryou-grid', '★ Pick');
     if (tab === 'trending') loadGrid('/trending', 'trending-grid', '🔥');
-    if (tab === 'latest') loadGrid('/recommended', 'latest-grid', 'New');
+    if (tab === 'latest') loadGrid('/latest', 'latest-grid', 'New');
   }
 }
 
