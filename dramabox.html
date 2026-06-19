@@ -414,9 +414,11 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
 <script>
-const API_ORIGIN = 'https://api.sansekai.my.id/api/dramabox';
-// Direct works with Sansekai's CORS headers; proxies stay as fallback.
+const API_ORIGIN = 'https://api.anichin.bio/dramabox';
+const API_KEY = 'TRIAL-ANICHIN-2026';
+// Direct works with Anichin's CORS headers; proxies stay as fallback.
 const PROXIES = [
   url => url,
   url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
@@ -438,9 +440,11 @@ async function apiFetch(path) {
   for (const i of order) {
     try {
       const proxied = PROXIES[i](target);
-      const res = await fetch(proxied, { headers: { 'Accept': 'application/json' } });
+      const headers = { 'Accept': 'application/json' };
+      if (i === 0) headers['X-API-Key'] = API_KEY;
+      const res = await fetch(proxied, { headers });
       if (res.status === 429) {
-        lastErr = new Error('Rate limit reached. Sansekai allows only a few requests per minute; wait about 60 seconds and retry.');
+        lastErr = new Error('Rate limit reached. Wait about 60 seconds and retry.');
         break;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -458,13 +462,18 @@ async function apiFetch(path) {
 function normalizeDrama(d) {
   return {
     ...d,
-    cover: d.cover || d.coverWap || d.coverUrl || '',
-    tagNames: d.tagNames || d.tags || (d.tagV3s || []).map(t => t.tagName).filter(Boolean),
+    bookId: d.bookId || d.id || d.dramaId,
+    bookName: d.bookName || d.title,
+    cover: d.cover || d.posterImg || d.coverWap || d.coverUrl || '',
+    introduction: d.introduction || d.description || d.synopsis || '',
+    chapterCount: d.chapterCount || d.episodes || d.totalEpisodes || 0,
+    playCount: d.playCount || d.viewCount || '',
+    tagNames: d.tagNames || d.tags || d.categoryNames || (d.tagV3s || []).map(t => t.tagName).filter(Boolean),
   };
 }
 
 function getList(data) {
-  return (Array.isArray(data) ? data : (data.data || data.result || [])).map(normalizeDrama);
+  return (Array.isArray(data) ? data : (data.items || data.data || data.result || [])).map(normalizeDrama);
 }
 
 function sourceRank(s) {
@@ -588,7 +597,7 @@ function switchTab(tab) {
     loadedTabs[tab] = true;
     if (tab === 'home') loadGrid('/foryou', 'foryou-grid', '★ Pick');
     if (tab === 'trending') loadGrid('/trending', 'trending-grid', '🔥');
-    if (tab === 'latest') loadGrid('/latest', 'latest-grid', 'New');
+    if (tab === 'latest') loadGrid('/recommended', 'latest-grid', 'New');
   }
 }
 
@@ -629,8 +638,12 @@ async function openDrama(bookId, name, cover, intro, epCount, tags, plays) {
 
   // fetch episode list
   try {
-    const data = await apiFetch(`/allepisode?bookId=${bookId}`);
-    const eps = Array.isArray(data) ? data : (data.data || data.result || []);
+    const data = await apiFetch(`/detail?id=${bookId}`);
+    const detail = data.data || data.result || data;
+    const count = detail.totalEpisodes || (Array.isArray(detail.episodes) ? detail.episodes.length : 0) || epCount || 0;
+    const eps = Array.isArray(detail.episodes) && detail.episodes.length
+      ? detail.episodes
+      : Array.from({length: count}, (_, i) => ({ episodeNumber: i + 1, title: `EP ${i + 1}` }));
     episodeCache[bookId] = eps;
     if (!eps.length) {
       document.querySelector('.ep-label').textContent = 'No episodes found.';
@@ -639,13 +652,54 @@ async function openDrama(bookId, name, cover, intro, epCount, tags, plays) {
     }
     document.querySelector('.ep-label').textContent = `${eps.length} Episodes — tap to watch`;
     document.getElementById('ep-grid').innerHTML = eps.map((ep, i) => `
-      <button class="ep-btn" id="ep-btn-${i}" onclick="playEpisode('${bookId}',${i+1},${i},'${escHtml(ep.chapterName||'EP '+(i+1))}')">
-        ${ep.chapterName || 'EP '+(i+1)}
+      <button class="ep-btn" id="ep-btn-${i}" onclick="playEpisode('${bookId}',${ep.episodeNumber || ep.number || i+1},${i},'${escHtml(ep.title || ep.chapterName || 'EP '+(i+1))}')">
+        ${ep.title || ep.chapterName || 'EP '+(i+1)}
       </button>`).join('');
   } catch(e) {
     document.querySelector('.ep-label').textContent = 'Failed to load episodes.';
     document.getElementById('ep-grid').innerHTML = `<div class="error-box"><strong>Error</strong>${e.message}</div>`;
   }
+}
+
+function attachStream(video, url, startTime = 0) {
+  if (window._hls) {
+    window._hls.destroy();
+    window._hls = null;
+  }
+
+  const startPlayback = () => {
+    if (startTime) video.currentTime = startTime;
+    video.play().catch(() => showToast('Tap play to start the video'));
+  };
+
+  const isHls = url.includes('.m3u8') || url.includes('/hls?');
+  const streamUrl = isHls && location.protocol !== 'file:'
+    ? `/api/hls?url=${encodeURIComponent(url)}`
+    : url;
+
+  if (isHls) {
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+      video.addEventListener('loadedmetadata', startPlayback, { once: true });
+      video.load();
+      return;
+    }
+    if (window.Hls && Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true });
+      window._hls = hls;
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, startPlayback);
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) showToast('Stream failed. Try another episode.');
+      });
+      return;
+    }
+  }
+
+  video.src = streamUrl;
+  video.load();
+  startPlayback();
 }
 
 async function playEpisode(bookId, ep, idx, epName) {
@@ -658,34 +712,16 @@ async function playEpisode(bookId, ep, idx, epName) {
   area.innerHTML = `<div style="margin-top:1rem;padding:1rem;background:var(--surface2);border-radius:8px;color:var(--muted);font-size:.8rem">Loading stream for ${escHtml(epName)}…</div>`;
 
   try {
-    let episode = episodeCache[bookId]?.[idx];
-    if (!episode) {
-      const epsData = await apiFetch(`/allepisode?bookId=${bookId}`);
-      const eps = Array.isArray(epsData) ? epsData : (epsData.data || epsData.result || []);
-      episodeCache[bookId] = eps;
-      episode = eps[idx];
-    }
-    if (!episode) throw new Error('Episode not found');
-
-    // Extract video sources from the episode cdnList returned by /allepisode.
-    const cdnList = episode.cdnList || [];
+    const data = await apiFetch(`/episode?id=${bookId}&ep=${ep}`);
+    if (data.locked) throw new Error('This episode is locked by the source.');
     let sources = [];
-    for (const cdn of cdnList) {
-      for (const vp of (cdn.videoPathList || [])) {
-        sources.push({
-          quality: vp.quality,
-          url: vp.videoPath,
-          isDefault: vp.isDefault === 1,
-          isVipEquity: vp.isVipEquity === 1,
-          isSigned: vp.videoPath.includes('Expires=') || vp.videoPath.includes('Signature='),
-        });
-      }
+    if (data.videoUrl) sources.push({ quality: 'Auto', url: data.videoUrl, isDefault: true });
+    for (const q of (data.qualityList || [])) {
+      sources.push({ quality: q.label || q.quality || 'Auto', url: q.url, isDefault: !!q.isDefault });
     }
-    if (!sources.length && episode.videoPath) sources.push({ quality: 'Default', url: episode.videoPath });
     if (!sources.length) throw new Error('No stream sources found');
 
-    // Prefer signed default/free streams and remove duplicate quality buttons from alternate CDNs.
-    sources.sort((a,b) => sourceRank(a) - sourceRank(b) || (parseInt(b.quality)||0) - (parseInt(a.quality)||0));
+    sources.sort((a,b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
     sources = [...sources.reduce((map, source) => {
       const key = String(source.quality);
       if (!map.has(key)) map.set(key, source);
@@ -695,7 +731,7 @@ async function playEpisode(bookId, ep, idx, epName) {
 
     function buildPlayer() {
       const qualityBtns = sources.map((s, i) => `
-        <button class="quality-btn ${i===0?'active':''}" onclick="changeQuality(${i}, this)">${s.quality}p</button>`).join('');
+        <button class="quality-btn ${i===0?'active':''}" onclick="changeQuality(${i}, this)">${escHtml(s.quality)}</button>`).join('');
       area.innerHTML = `
         <div style="margin-top:1rem">
           <div class="player-info">▶ Now playing: <strong style="color:var(--text)">${escHtml(epName)}</strong></div>
@@ -709,8 +745,7 @@ async function playEpisode(bookId, ep, idx, epName) {
       // expose sources globally for quality switching
       window._dramaSources = sources;
       const v = document.getElementById('drama-video');
-      v.load();
-      v.play().catch(() => showToast('Tap play to start the video'));
+      attachStream(v, current.url);
     }
     buildPlayer();
 
@@ -720,9 +755,7 @@ async function playEpisode(bookId, ep, idx, epName) {
       const v = document.getElementById('drama-video');
       const t = v.currentTime;
       current = window._dramaSources[idx];
-      v.src = current.url;
-      v.currentTime = t;
-      v.play().catch(() => showToast('Tap play to start the video'));
+      attachStream(v, current.url, t);
     };
 
   } catch(e) {
