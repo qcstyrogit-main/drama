@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DramaStream</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700;900&display=swap');
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c28;
+      --border: #2a2a3a;
+      --accent: #e63950;
+      --accent2: #ff6b6b;
+      --gold: #f5c842;
+      --text: #f0f0f8;
+      --muted: #888899;
+      --card-hover: #1e1e2d;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,15,0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px;
+    }
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem; font-weight: 900;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--accent); }
+    .nav-search {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.4rem 0.8rem;
+      flex: 1; max-width: 380px; margin: 0 2rem;
+    }
+    .nav-search input {
+      background: none; border: none; outline: none;
+      color: var(--text); font-size: 0.875rem; width: 100%;
+    }
+    .nav-search input::placeholder { color: var(--muted); }
+    .nav-search svg { color: var(--muted); flex-shrink: 0; }
+    .nav-tabs { display: flex; gap: 0.25rem; }
+    .tab-btn {
+      background: none; border: none; color: var(--muted);
+      font-size: 0.875rem; font-weight: 500; padding: 0.4rem 0.9rem;
+      border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    }
+    .tab-btn:hover { color: var(--text); background: var(--surface2); }
+    .tab-btn.active { color: var(--text); background: var(--accent); }
+
+    /* MAIN */
+    main { max-width: 1280px; margin: 0 auto; padding: 2rem; }
+
+    /* HERO */
+    .hero {
+      background: linear-gradient(135deg, var(--surface2) 0%, #1a0d20 100%);
+      border: 1px solid var(--border); border-radius: 16px;
+      padding: 3rem; margin-bottom: 2.5rem;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -50%; right: -20%;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(230,57,80,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 4vw, 3rem); font-weight: 900;
+      line-height: 1.15; margin-bottom: 0.75rem;
+    }
+    .hero h1 em { color: var(--accent); font-style: normal; }
+    .hero p { color: var(--muted); font-size: 1rem; max-width: 460px; line-height: 1.6; }
+
+    /* SECTION */
+    .section { margin-bottom: 2.5rem; }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    .section-title {
+      font-size: 1.1rem; font-weight: 700;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-title .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+    }
+    .see-all {
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); font-size: 0.8rem; padding: 0.3rem 0.7rem;
+      border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    }
+    .see-all:hover { color: var(--text); border-color: var(--accent); }
+
+    /* GRID */
+    .drama-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+
+    /* CARD */
+    .drama-card {
+      background: var(--surface);
+      border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border);
+      cursor: pointer; transition: all 0.25s;
+      position: relative;
+    }
+    .drama-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: 0 8px 32px rgba(230,57,80,0.2);
+    }
+    .card-poster {
+      width: 100%; aspect-ratio: 2/3;
+      object-fit: cover; display: block;
+      background: var(--surface2);
+    }
+    .card-poster-placeholder {
+      width: 100%; aspect-ratio: 2/3;
+      background: linear-gradient(135deg, var(--surface2), var(--border));
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 2rem;
+    }
+    .card-body { padding: 0.6rem 0.75rem 0.75rem; }
+    .card-title {
+      font-size: 0.8rem; font-weight: 600; line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+      margin-bottom: 0.35rem;
+    }
+    .card-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 0.7rem; color: var(--muted);
+    }
+    .card-eps {
+      background: var(--accent); color: #fff;
+      padding: 0.15rem 0.4rem; border-radius: 4px;
+      font-size: 0.65rem; font-weight: 700;
+    }
+    .card-badge {
+      position: absolute; top: 0.5rem; left: 0.5rem;
+      background: rgba(245,200,66,0.9); color: #000;
+      font-size: 0.6rem; font-weight: 800;
+      padding: 0.15rem 0.4rem; border-radius: 4px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    /* SKELETON */
+    .skeleton { animation: pulse 1.5s ease-in-out infinite; }
+    .skeleton-poster {
+      width: 100%; aspect-ratio: 2/3;
+      background: var(--surface2); border-radius: 4px;
+    }
+    .skeleton-line {
+      height: 10px; background: var(--surface2);
+      border-radius: 4px; margin-top: 0.5rem;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* MODAL / DETAIL */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border); border-radius: 16px;
+      width: 100%; max-width: 720px; max-height: 90vh;
+      overflow-y: auto; position: relative;
+      transform: translateY(20px); transition: transform 0.3s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-close {
+      position: sticky; top: 1rem; float: right; margin: 1rem 1rem 0 0;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); width: 32px; height: 32px;
+      border-radius: 50%; cursor: pointer; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s; z-index: 10;
+    }
+    .modal-close:hover { background: var(--accent); }
+    .modal-content { padding: 1.5rem; }
+    .modal-hero {
+      display: flex; gap: 1.5rem; margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .modal-poster {
+      width: 140px; flex-shrink: 0;
+      border-radius: 8px; overflow: hidden;
+    }
+    .modal-poster img {
+      width: 100%; display: block;
+      object-fit: cover; aspect-ratio: 2/3;
+    }
+    .modal-poster-placeholder {
+      width: 100%; aspect-ratio: 2/3;
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; color: var(--muted);
+    }
+    .modal-info { flex: 1; min-width: 200px; }
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem; font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .modal-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
+    .tag {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 0.2rem 0.6rem;
+      font-size: 0.7rem; color: var(--muted);
+    }
+    .modal-stats {
+      display: flex; gap: 1rem; margin-bottom: 0.75rem;
+      font-size: 0.8rem; color: var(--muted);
+    }
+    .modal-stats strong { color: var(--text); }
+    .modal-synopsis {
+      font-size: 0.875rem; color: var(--muted); line-height: 1.65;
+    }
+
+    /* EPISODE LIST */
+    .ep-label {
+      font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;
+      color: var(--muted);
+    }
+    .ep-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+      gap: 0.4rem;
+    }
+    .ep-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px; padding: 0.45rem 0;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; text-align: center;
+    }
+    .ep-btn:hover { background: var(--accent); border-color: var(--accent); }
+    .ep-btn.active { background: var(--accent); border-color: var(--accent); }
+
+    /* VIDEO PLAYER */
+    .player-wrap {
+      background: #000; border-radius: 10px; overflow: hidden;
+      margin-bottom: 1rem; position: relative;
+    }
+    .player-wrap video {
+      width: 100%; display: block; max-height: 400px;
+    }
+    .player-info {
+      font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem;
+    }
+    .quality-row {
+      display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1rem;
+    }
+    .quality-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); font-size: 0.7rem; font-weight: 700;
+      padding: 0.2rem 0.6rem; border-radius: 4px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .quality-btn:hover, .quality-btn.active {
+      background: var(--accent); border-color: var(--accent); color: #fff;
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); padding: 0.6rem 1.2rem;
+      border-radius: 8px; font-size: 0.875rem;
+      z-index: 999; opacity: 0; pointer-events: none;
+      transition: opacity 0.3s; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ERROR STATE */
+    .error-box {
+      background: var(--surface2); border: 1px solid #e63950;
+      border-radius: 10px; padding: 1.5rem; text-align: center;
+      color: var(--muted); font-size: 0.875rem;
+    }
+    .error-box strong { display: block; color: var(--accent); margin-bottom: 0.4rem; }
+    .retry-btn {
+      background: var(--accent); border: none; color: #fff;
+      padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.8rem;
+      cursor: pointer; margin-top: 0.75rem; transition: opacity 0.2s;
+    }
+    .retry-btn:hover { opacity: 0.85; }
+
+    /* SEARCH RESULTS */
+    #search-status { color: var(--muted); font-size: 0.875rem; margin-bottom: 1rem; }
+
+    /* RESPONSIVE */
+    @media (max-width: 640px) {
+      nav { padding: 0 1rem; }
+      main { padding: 1rem; }
+      .nav-search { margin: 0 0.75rem; }
+      .drama-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+      .hero { padding: 1.75rem; }
+      .modal-hero { flex-direction: column; }
+      .modal-poster { width: 100px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Drama<span>Stream</span></div>
+  <div class="nav-search">
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+    </svg>
+    <input id="search-input" type="text" placeholder="Search dramas…" autocomplete="off" />
+  </div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" data-tab="home">Home</button>
+    <button class="tab-btn" data-tab="trending">Trending</button>
+    <button class="tab-btn" data-tab="latest">Latest</button>
+  </div>
+</nav>
+
+<main>
+  <!-- HOME VIEW -->
+  <div id="view-home">
+    <div class="error-box" id="file-warning" style="display:none;margin-bottom:1rem;text-align:left">
+      <strong>Run this page from localhost</strong>
+      Video playback may fail when opened as a file. Use the local URL from the terminal/server instead of file://.
+    </div>
+
+    <div class="hero">
+      <h1>Your stage for<br/><em>Asian Short Dramas</em></h1>
+      <p>Browse trending series, search by title, and stream every episode — all free.</p>
+    </div>
+
+    <div class="section" id="foryou-section">
+      <div class="section-header">
+        <div class="section-title"><span class="dot"></span> For You</div>
+        <button class="see-all" onclick="switchTab('home')">Refresh</button>
+      </div>
+      <div class="drama-grid" id="foryou-grid"></div>
+    </div>
+  </div>
+
+  <!-- TRENDING VIEW -->
+  <div id="view-trending" style="display:none">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="dot"></span> Trending Now</div>
+      </div>
+      <div class="drama-grid" id="trending-grid"></div>
+    </div>
+  </div>
+
+  <!-- LATEST VIEW -->
+  <div id="view-latest" style="display:none">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="dot"></span> Latest Added</div>
+      </div>
+      <div class="drama-grid" id="latest-grid"></div>
+    </div>
+  </div>
+
+  <!-- SEARCH VIEW -->
+  <div id="view-search" style="display:none">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="dot"></span> Search Results</div>
+      </div>
+      <div id="search-status"></div>
+      <div class="drama-grid" id="search-grid"></div>
+    </div>
+  </div>
+</main>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal">
+    <button class="modal-close" id="modal-close">✕</button>
+    <div class="modal-content" id="modal-content"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API_ORIGIN = 'https://api.sansekai.my.id/api/dramabox';
+// Direct works with Sansekai's CORS headers; proxies stay as fallback.
+const PROXIES = [
+  url => url,
+  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+];
+const cache = {};
+const episodeCache = {};
+let workingProxyIdx = 0;
+
+async function apiFetch(path) {
+  const key = path;
+  if (cache[key]) return cache[key];
+
+  const target = API_ORIGIN + path;
+  let lastErr;
+
+  // try from last known working proxy first, then others
+  const order = [workingProxyIdx, ...PROXIES.map((_,i)=>i).filter(i=>i!==workingProxyIdx)];
+  for (const i of order) {
+    try {
+      const proxied = PROXIES[i](target);
+      const res = await fetch(proxied, { headers: { 'Accept': 'application/json' } });
+      if (res.status === 429) {
+        lastErr = new Error('Rate limit reached. Sansekai allows only a few requests per minute; wait about 60 seconds and retry.');
+        break;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      workingProxyIdx = i; // remember what worked
+      cache[key] = data;
+      return data;
+    } catch(e) {
+      lastErr = e;
+    }
+  }
+  throw new Error(`All proxies failed. Last error: ${lastErr?.message || 'unknown'}`);
+}
+
+function normalizeDrama(d) {
+  return {
+    ...d,
+    cover: d.cover || d.coverWap || d.coverUrl || '',
+    tagNames: d.tagNames || d.tags || (d.tagV3s || []).map(t => t.tagName).filter(Boolean),
+  };
+}
+
+function getList(data) {
+  return (Array.isArray(data) ? data : (data.data || data.result || [])).map(normalizeDrama);
+}
+
+async function decryptVideoUrl(url) {
+  const data = await apiFetch(`/decrypt?url=${encodeURIComponent(url)}`);
+  if (typeof data === 'string') return data;
+  return data.url || data.videoPath || data.data || data.result || url;
+}
+
+function sourceRank(s) {
+  if (s.isDefault) return 0;
+  if (!s.isVipEquity) return 1;
+  return 2;
+}
+
+function showToast(msg, dur = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+if (location.protocol === 'file:') {
+  document.getElementById('file-warning').style.display = '';
+}
+
+// ── SKELETON ────────────────────────────────────────────────
+function renderSkeletons(grid, n = 10) {
+  grid.innerHTML = Array.from({length: n}, () => `
+    <div class="drama-card skeleton" style="pointer-events:none">
+      <div class="skeleton-poster"></div>
+      <div class="card-body">
+        <div class="skeleton-line" style="width:90%"></div>
+        <div class="skeleton-line" style="width:60%;margin-top:.3rem"></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── CARD ────────────────────────────────────────────────────
+function buildCard(d, badge) {
+  const img = d.cover
+    ? `<img class="card-poster" src="${d.cover}" alt="${d.bookName}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      + `<div class="card-poster-placeholder" style="display:none">🎬</div>`
+    : `<div class="card-poster-placeholder">🎬</div>`;
+  return `
+    <div class="drama-card" onclick="openDrama('${d.bookId}','${escHtml(d.bookName)}','${d.cover||''}','${escHtml(d.introduction||'')}',${d.chapterCount||0},'${(d.tagNames||[]).join(',')}','${d.playCount||''}')">
+      ${badge ? `<div class="card-badge">${badge}</div>` : ''}
+      ${img}
+      <div class="card-body">
+        <div class="card-title">${escHtml(d.bookName)}</div>
+        <div class="card-meta">
+          ${d.chapterCount ? `<span class="card-eps">${d.chapterCount} EP</span>` : '<span></span>'}
+          <span>${d.playCount || ''}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── LOAD SECTIONS ────────────────────────────────────────────
+async function loadGrid(endpoint, gridId, badge) {
+  const grid = document.getElementById(gridId);
+  renderSkeletons(grid);
+  try {
+    const data = await apiFetch(endpoint);
+    const list = getList(data);
+    if (!list.length) { grid.innerHTML = '<div class="error-box"><strong>No results</strong>Nothing found here.</div>'; return; }
+    grid.innerHTML = list.map(d => buildCard(d, badge)).join('');
+  } catch(e) {
+    const msg = e.message.includes('proxy') || e.message.toLowerCase().includes('fetch')
+      ? 'CORS / network error. Try opening this file from a local server (e.g. VS Code Live Server or <code>npx serve .</code>) instead of double-clicking the file.'
+      : e.message;
+    grid.innerHTML = `<div class="error-box"><strong>Failed to load</strong>${msg}<br><button class="retry-btn" onclick="loadGrid('${endpoint}','${gridId}','${badge||''}')">Retry</button></div>`;
+  }
+}
+
+// ── SEARCH ────────────────────────────────────────────────────
+let searchTimer;
+document.getElementById('search-input').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  if (!q) { if (currentTab === 'search') switchTab('home'); return; }
+  searchTimer = setTimeout(() => doSearch(q), 500);
+});
+
+async function doSearch(q) {
+  showView('search');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const grid = document.getElementById('search-grid');
+  const status = document.getElementById('search-status');
+  status.textContent = `Searching for "${q}"…`;
+  renderSkeletons(grid, 8);
+  try {
+    const data = await apiFetch(`/search?query=${encodeURIComponent(q)}`);
+    const list = getList(data);
+    status.textContent = `${list.length} result${list.length !== 1 ? 's' : ''} for "${q}"`;
+    if (!list.length) { grid.innerHTML = `<div class="error-box"><strong>No results</strong>Try a different keyword.</div>`; return; }
+    grid.innerHTML = list.map(d => buildCard(d)).join('');
+  } catch(e) {
+    status.textContent = '';
+    grid.innerHTML = `<div class="error-box"><strong>Search failed</strong>${e.message}</div>`;
+  }
+}
+
+// ── TABS ─────────────────────────────────────────────────────
+let currentTab = 'home';
+let loadedTabs = {};
+
+function showView(name) {
+  ['home','trending','latest','search'].forEach(v => {
+    document.getElementById('view-' + v).style.display = v === name ? '' : 'none';
+  });
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  document.getElementById('search-input').value = '';
+  showView(tab);
+  if (!loadedTabs[tab]) {
+    loadedTabs[tab] = true;
+    if (tab === 'home') loadGrid('/foryou', 'foryou-grid', '★ Pick');
+    if (tab === 'trending') loadGrid('/trending', 'trending-grid', '🔥');
+    if (tab === 'latest') loadGrid('/latest', 'latest-grid', 'New');
+  }
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// ── DRAMA DETAIL MODAL ────────────────────────────────────────
+async function openDrama(bookId, name, cover, intro, epCount, tags, plays) {
+  const overlay = document.getElementById('modal-overlay');
+  const content = document.getElementById('modal-content');
+
+  // show modal immediately with basic info
+  const tagList = tags ? tags.split(',').filter(Boolean).map(t => `<span class="tag">${t}</span>`).join('') : '';
+  const posterEl = cover
+    ? `<img src="${cover}" alt="${escHtml(name)}" style="width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:cover" onerror="this.style.display='none'">`
+    : `<div class="modal-poster-placeholder">🎬</div>`;
+
+  content.innerHTML = `
+    <div class="modal-hero">
+      <div class="modal-poster">${posterEl}</div>
+      <div class="modal-info">
+        <div class="modal-title">${escHtml(name)}</div>
+        <div class="modal-tags">${tagList}</div>
+        <div class="modal-stats">
+          ${epCount ? `<span><strong>${epCount}</strong> Episodes</span>` : ''}
+          ${plays ? `<span><strong>${plays}</strong> Views</span>` : ''}
+        </div>
+        <div class="modal-synopsis">${escHtml(intro || 'No synopsis available.')}</div>
+      </div>
+    </div>
+    <div class="ep-label">Episodes — loading…</div>
+    <div class="ep-grid" id="ep-grid"><div class="skeleton" style="height:32px;background:var(--surface2);border-radius:6px"></div></div>
+    <div id="player-area"></div>`;
+
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // fetch episode list
+  try {
+    const data = await apiFetch(`/allepisode?bookId=${bookId}`);
+    const eps = Array.isArray(data) ? data : (data.data || data.result || []);
+    episodeCache[bookId] = eps;
+    if (!eps.length) {
+      document.querySelector('.ep-label').textContent = 'No episodes found.';
+      document.getElementById('ep-grid').innerHTML = '';
+      return;
+    }
+    document.querySelector('.ep-label').textContent = `${eps.length} Episodes — tap to watch`;
+    document.getElementById('ep-grid').innerHTML = eps.map((ep, i) => `
+      <button class="ep-btn" id="ep-btn-${i}" onclick="playEpisode('${bookId}',${i+1},${i},'${escHtml(ep.chapterName||'EP '+(i+1))}')">
+        ${ep.chapterName || 'EP '+(i+1)}
+      </button>`).join('');
+  } catch(e) {
+    document.querySelector('.ep-label').textContent = 'Failed to load episodes.';
+    document.getElementById('ep-grid').innerHTML = `<div class="error-box"><strong>Error</strong>${e.message}</div>`;
+  }
+}
+
+async function playEpisode(bookId, ep, idx, epName) {
+  // highlight active
+  document.querySelectorAll('.ep-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('ep-btn-' + idx);
+  if (btn) btn.classList.add('active');
+
+  const area = document.getElementById('player-area');
+  area.innerHTML = `<div style="margin-top:1rem;padding:1rem;background:var(--surface2);border-radius:8px;color:var(--muted);font-size:.8rem">Loading stream for ${escHtml(epName)}…</div>`;
+
+  try {
+    let episode = episodeCache[bookId]?.[idx];
+    if (!episode) {
+      const epsData = await apiFetch(`/allepisode?bookId=${bookId}`);
+      const eps = Array.isArray(epsData) ? epsData : (epsData.data || epsData.result || []);
+      episodeCache[bookId] = eps;
+      episode = eps[idx];
+    }
+    if (!episode) throw new Error('Episode not found');
+
+    // Extract video sources from the episode cdnList returned by /allepisode.
+    const cdnList = episode.cdnList || [];
+    let sources = [];
+    for (const cdn of cdnList) {
+      for (const vp of (cdn.videoPathList || [])) {
+        sources.push({
+          quality: vp.quality,
+          url: vp.videoPath,
+          isDefault: vp.isDefault === 1,
+          isVipEquity: vp.isVipEquity === 1,
+        });
+      }
+    }
+    if (!sources.length && episode.videoPath) sources.push({ quality: 'Default', url: episode.videoPath });
+    if (!sources.length) throw new Error('No stream sources found');
+
+    // Prefer the API's default/free stream over VIP-only high quality entries.
+    sources.sort((a,b) => sourceRank(a) - sourceRank(b) || (parseInt(b.quality)||0) - (parseInt(a.quality)||0));
+    let current = sources[0];
+
+    function buildPlayer() {
+      const qualityBtns = sources.map((s, i) => `
+        <button class="quality-btn ${i===0?'active':''}" onclick="changeQuality(${i}, this)">${s.quality}p</button>`).join('');
+      area.innerHTML = `
+        <div style="margin-top:1rem">
+          <div class="player-info">▶ Now playing: <strong style="color:var(--text)">${escHtml(epName)}</strong></div>
+          <div class="player-wrap">
+            <video id="drama-video" controls autoplay muted playsinline preload="metadata">
+              <source src="${escHtml(current.url)}" type="video/mp4">
+              Your browser does not support HTML5 video.
+            </video>
+          </div>
+          <div class="quality-row">${qualityBtns}</div>
+        </div>`;
+      // expose sources globally for quality switching
+      window._dramaSources = sources;
+      const v = document.getElementById('drama-video');
+      v.addEventListener('error', async () => {
+        if (current.decryptTried) return;
+        current.decryptTried = true;
+        try {
+          const directUrl = current.url;
+          current.url = await decryptVideoUrl(directUrl);
+          if (current.url !== directUrl) {
+            v.src = current.url;
+            v.load();
+            v.play().catch(() => showToast('Tap play to start the video'));
+          }
+        } catch (e) {
+          area.insertAdjacentHTML('beforeend', `<div class="error-box" style="margin-top:1rem"><strong>Video failed</strong>${escHtml(e.message)}</div>`);
+        }
+      });
+    }
+    buildPlayer();
+
+    window.changeQuality = (idx, el) => {
+      document.querySelectorAll('.quality-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      const v = document.getElementById('drama-video');
+      const t = v.currentTime;
+      current = window._dramaSources[idx];
+      v.src = current.url;
+      v.currentTime = t;
+      v.play().catch(() => showToast('Tap play to start the video'));
+    };
+
+  } catch(e) {
+    area.innerHTML = `<div class="error-box" style="margin-top:1rem"><strong>Stream unavailable</strong>${e.message}<br><small>Rate limit may be active — wait a moment and retry.</small><br><button class="retry-btn" onclick="playEpisode('${bookId}',${ep},${idx},'${escHtml(epName)}')">Retry</button></div>`;
+  }
+}
+
+// ── CLOSE MODAL ───────────────────────────────────────────────
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  // stop video
+  const v = document.getElementById('drama-video');
+  if (v) v.pause();
+}
+
+// ── BOOT ─────────────────────────────────────────────────────
+switchTab('home');
+</script>
+</body>
+</html>
