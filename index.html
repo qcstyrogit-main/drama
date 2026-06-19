@@ -467,16 +467,13 @@ function getList(data) {
   return (Array.isArray(data) ? data : (data.data || data.result || [])).map(normalizeDrama);
 }
 
-async function decryptVideoUrl(url) {
-  const data = await apiFetch(`/decrypt?url=${encodeURIComponent(url)}`);
-  if (typeof data === 'string') return data;
-  return data.url || data.videoPath || data.data || data.result || url;
-}
-
 function sourceRank(s) {
-  if (s.isDefault) return 0;
-  if (!s.isVipEquity) return 1;
-  return 2;
+  if (s.isDefault && s.isSigned) return 0;
+  if (s.isDefault) return 1;
+  if (!s.isVipEquity && s.isSigned) return 2;
+  if (!s.isVipEquity) return 3;
+  if (s.isSigned) return 4;
+  return 5;
 }
 
 function showToast(msg, dur = 2500) {
@@ -680,14 +677,20 @@ async function playEpisode(bookId, ep, idx, epName) {
           url: vp.videoPath,
           isDefault: vp.isDefault === 1,
           isVipEquity: vp.isVipEquity === 1,
+          isSigned: vp.videoPath.includes('Expires=') || vp.videoPath.includes('Signature='),
         });
       }
     }
     if (!sources.length && episode.videoPath) sources.push({ quality: 'Default', url: episode.videoPath });
     if (!sources.length) throw new Error('No stream sources found');
 
-    // Prefer the API's default/free stream over VIP-only high quality entries.
+    // Prefer signed default/free streams and remove duplicate quality buttons from alternate CDNs.
     sources.sort((a,b) => sourceRank(a) - sourceRank(b) || (parseInt(b.quality)||0) - (parseInt(a.quality)||0));
+    sources = [...sources.reduce((map, source) => {
+      const key = String(source.quality);
+      if (!map.has(key)) map.set(key, source);
+      return map;
+    }, new Map()).values()];
     let current = sources[0];
 
     function buildPlayer() {
@@ -697,8 +700,7 @@ async function playEpisode(bookId, ep, idx, epName) {
         <div style="margin-top:1rem">
           <div class="player-info">▶ Now playing: <strong style="color:var(--text)">${escHtml(epName)}</strong></div>
           <div class="player-wrap">
-            <video id="drama-video" controls autoplay muted playsinline preload="metadata">
-              <source src="${escHtml(current.url)}" type="video/mp4">
+            <video id="drama-video" src="${escHtml(current.url)}" controls autoplay muted playsinline preload="auto">
               Your browser does not support HTML5 video.
             </video>
           </div>
@@ -707,21 +709,8 @@ async function playEpisode(bookId, ep, idx, epName) {
       // expose sources globally for quality switching
       window._dramaSources = sources;
       const v = document.getElementById('drama-video');
-      v.addEventListener('error', async () => {
-        if (current.decryptTried) return;
-        current.decryptTried = true;
-        try {
-          const directUrl = current.url;
-          current.url = await decryptVideoUrl(directUrl);
-          if (current.url !== directUrl) {
-            v.src = current.url;
-            v.load();
-            v.play().catch(() => showToast('Tap play to start the video'));
-          }
-        } catch (e) {
-          area.insertAdjacentHTML('beforeend', `<div class="error-box" style="margin-top:1rem"><strong>Video failed</strong>${escHtml(e.message)}</div>`);
-        }
-      });
+      v.load();
+      v.play().catch(() => showToast('Tap play to start the video'));
     }
     buildPlayer();
 
