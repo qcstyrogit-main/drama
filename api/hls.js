@@ -1,5 +1,5 @@
 module.exports = async function handler(req, res) {
-  const target = req.query.url;
+  const target = Array.isArray(req.query.url) ? req.query.url[0] : req.query.url;
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -16,8 +16,16 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    const upstreamHeaders = {
+      'User-Agent': 'Mozilla/5.0',
+    };
+    if (new URL(target).hostname.endsWith('anichin.bio')) {
+      upstreamHeaders['X-API-Key'] = 'TRIAL-ANICHIN-2026';
+    }
+    if (req.headers.range) upstreamHeaders.Range = req.headers.range;
+
     const upstream = await fetch(target, {
-      headers: req.headers.range ? { Range: req.headers.range } : {},
+      headers: upstreamHeaders,
     });
 
     const contentType = upstream.headers.get('content-type') || '';
